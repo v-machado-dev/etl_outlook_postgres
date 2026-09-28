@@ -1,0 +1,7 @@
+pandas
+openpyxl
+python-calamine
+psycopg[binary]
+sqlalchemy
+python-dotenv
+pywin32; sys_platform == "win32"

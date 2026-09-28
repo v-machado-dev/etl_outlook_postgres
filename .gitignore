@@ -1,0 +1,22 @@
+# dados
+landing_zone/
+processados/
+*.xlsx
+*.xls
+*.csv
+
+# senhas
+.env
+
+# ambiente e lixo do Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# cópia dos arquivos antes das alterações
+_versao_anterior/
+
+# outros
+.vscode/
+.idea/
