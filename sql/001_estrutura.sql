@@ -1,37 +1,35 @@
--- =====================================================================
 -- Estrutura do banco etl_tasy
 --
 -- Pré-requisitos (feitos uma vez, conectado ao banco "postgres"):
 --   CREATE ROLE etl_user WITH LOGIN PASSWORD '...';   -- senha fica fora do repositório
 --   CREATE DATABASE etl_tasy OWNER etl_user ENCODING 'UTF8' TEMPLATE template0;
---
--- Como rodar: pgAdmin → Query Tool NO BANCO etl_tasy → F5
--- =====================================================================
+
+-- Como rodar: pgAdmin -> Query Tool NO BANCO etl_tasy -> F5
 
 SET ROLE etl_user;
 
 -- Para recriar do zero (APAGA todas as cargas), descomente as duas linhas:
-DROP SCHEMA IF EXISTS raw CASCADE;
-DROP SCHEMA IF EXISTS etl CASCADE;
+-- DROP SCHEMA IF EXISTS raw CASCADE;
+-- DROP SCHEMA IF EXISTS etl CASCADE;
 
 ALTER DATABASE etl_tasy SET timezone TO 'America/Sao_Paulo';
 
 CREATE SCHEMA etl;   -- controle do processo (metadados)
-CREATE SCHEMA raw;   -- dados brutos, como vieram da planilha
+CREATE SCHEMA raw;   -- dados brutos
 
 
--- Uma linha por arquivo importado. load_id = versão da carga.
+-- Tabela para controle. load_id = PK - versão da carga.
 CREATE TABLE etl.controle_cargas (
     load_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome_arquivo  TEXT        NOT NULL,
-    hash_arquivo  CHAR(64)    NOT NULL UNIQUE,   -- impede carregar o mesmo arquivo duas vezes
+    hash_arquivo  CHAR(64)    NOT NULL UNIQUE,   -- proteção contra carregar o mesmo arquivo duas vezes
     data_envio    TIMESTAMP   NOT NULL,          -- quando o e-mail foi enviado
     qtd_linhas    INTEGER,
     carregado_em  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 
--- Os dados. Cada linha aponta para a carga (load_id) de onde veio.
+-- Tabela dos dados
 CREATE TABLE raw.base_tasy (
     id                      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     load_id                 BIGINT NOT NULL REFERENCES etl.controle_cargas (load_id),
@@ -67,7 +65,7 @@ CREATE TABLE raw.base_tasy (
     ds_plano                TEXT,
     ds_categoria            TEXT,
     nm_estab_conta          TEXT,
-    ds_status_2             TEXT,   -- 2ª coluna "Status" da planilha (renomear quando souber o que é)
+    ds_status_2             TEXT,  
     dt_nf                   TIMESTAMP,
     nm_usuario_etapa        TEXT,
     nr_protocolo_documento  BIGINT

@@ -8,52 +8,52 @@ import psycopg
 
 from config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS, conectar
 
-# Nome na planilha → nome da coluna em raw.base_tasy
+# nomeação das colunas do BD
 COLUNAS = {
-    "Conta": "nr_conta",
-    "Setor Atend": "ds_setor_atendimento",
-    "Atendimento": "nr_atendimento",
-    "Doc. Convênio": "cd_doc_convenio",
-    "Médico": "nm_medico",
-    "Etapa": "ds_etapa",
+    "Conta": "conta",
+    "Setor Atend": "setor_atend",
+    "Atendimento": "atendimento",
+    "Doc. Convênio": "doc_convenio",
+    "Médico": "medico",
+    "Etapa": "etapa",
     "Dt Etapa": "dt_etapa",
-    "Observação Etapa": "ds_observacao_etapa",
-    "Tipo Obs Conta": "ds_tipo_obs_conta",
-    "Observação Conta": "ds_observacao_conta",
-    "Convenio": "nm_convenio",
-    "Classificacao": "ds_classificacao",
-    "Status": "ds_status",
-    "Conta Enviada": "ie_conta_enviada",
-    "Data Entrada": "dt_entrada",
-    "Prontuario": "nr_prontuario",
-    "Paciente": "nm_paciente",
-    "Estab atend": "nm_estab_atendimento",
-    "Data Entrega": "dt_entrega",
-    "Status protocolo": "ds_status_protocolo",
+    "Observação Etapa": "observacao_etapa",
+    "Tipo Obs Conta": "tipo_obs_conta",
+    "Observação Conta": "observacao_conta",
+    "Convenio": "convenio",
+    "Classificacao": "classificacao",
+    "Status": "status",
+    "Conta Enviada": "conta_enviada",
+    "Data Entrada": "data_entrada",
+    "Prontuario": "prontuario",
+    "Paciente": "paciente",
+    "Estab atend": "estab_atend",
+    "Data Entrega": "data_entrega",
+    "Status protocolo": "status_protocolo",
     "Vl conta": "vl_conta",
-    "Data Titulo": "dt_titulo",
+    "Data Titulo": "data_titulo",
     "Nr Titulo": "nr_titulo",
     "Nr Protocolo": "nr_protocolo",
-    "Desc Protocolo": "ds_protocolo",
+    "Desc Protocolo": "desc_protocolo",
     "Nr Guia": "nr_guia",
-    "Senha": "cd_senha",
-    "Usuario Convenio": "cd_usuario_convenio",
-    "Plano": "ds_plano",
-    "Categoria": "ds_categoria",
-    "Estab conta": "nm_estab_conta",
-    "Status.1": "ds_status_2",
-    "Data NF": "dt_nf",
-    "Usuário Etapa": "nm_usuario_etapa",
+    "Senha": "senha",
+    "Usuario Convenio": "usuario_convenio",
+    "Plano": "plano",
+    "Categoria": "categoria",
+    "Estab conta": "estab_conta",
+    "Status.1": "status_2",
+    "Data NF": "data_nf",
+    "Usuário Etapa": "usuario_etapa",
     "Nº Protocolo Documento": "nr_protocolo_documento",
 }
 
 # Tipos de cada coluna (precisam bater com o CREATE TABLE em sql/001_estrutura.sql)
 COLUNAS_INTEIRAS = [
-    "nr_conta", "nr_atendimento", "nr_prontuario",
+    "conta", "atendimento", "prontuario",
     "nr_titulo", "nr_protocolo", "nr_protocolo_documento",
 ]
-COLUNAS_DATA = ["dt_entrada", "dt_entrega", "dt_titulo", "dt_nf"]  # já vêm como data do Excel
-FORMATO_DT_ETAPA = "%d/%m/%Y %H:%M:%S"                               # dt_etapa vem como texto
+COLUNAS_DATA = ["data_entrada", "data_entrega", "data_titulo", "data_nf"]  # já vêm como data do Excel
+FORMATO_dt_etapa = "%d/%m/%Y %H:%M:%S"                          
 COLUNAS_TEXTO = [
     c for c in COLUNAS.values()
     if c not in COLUNAS_INTEIRAS + COLUNAS_DATA + ["dt_etapa", "vl_conta"]
@@ -76,12 +76,11 @@ def calcular_hash(caminho: Path) -> str:
 
 # Data de envio do e-mail, lida de volta do nome do arquivo
 def extrair_data_envio(caminho: Path) -> datetime:
-    tamanho = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_NOME))  # 16 para "dd-mm-aaaa_HH-MM"
+    tamanho = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_NOME))  # formato "dd-mm-aaaa_HH-MM"
     return datetime.strptime(caminho.name[:tamanho], FORMATO_DATA_NOME)
 
-
+"""Converte para texto sem o '.0' que números lidos do Excel costumam trazer."""
 def _para_texto(valor):
-    """Converte para texto sem o '.0' que números lidos do Excel costumam trazer."""
     if valor is None or pd.isna(valor):
         return None
     if isinstance(valor, float) and valor.is_integer():
@@ -100,7 +99,7 @@ def preparar_df(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.rename(columns=COLUNAS)[list(COLUNAS.values())].copy()
 
-    df["dt_etapa"] = pd.to_datetime(df["dt_etapa"], format=FORMATO_DT_ETAPA, errors="raise")
+    df["dt_etapa"] = pd.to_datetime(df["dt_etapa"], format=FORMATO_dt_etapa, errors="raise")
     for col in COLUNAS_DATA:
         df[col] = pd.to_datetime(df[col], errors="raise")
 

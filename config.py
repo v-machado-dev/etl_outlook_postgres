@@ -7,11 +7,10 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 
-load_dotenv()  # lê o .env e carrega as variáveis na memória
+load_dotenv()  # carrega as variáveis na memória
 
-
+"""Lê uma variável do .env e falha com mensagem clara se ela não existir."""
 def _obrigatoria(nome: str) -> str:
-    """Lê uma variável do .env e falha com mensagem clara se ela não existir."""
     valor = os.getenv(nome)
     if not valor:
         raise RuntimeError(f"Variável '{nome}' não definida no .env")
@@ -38,7 +37,7 @@ PG = {
     "dbname": _obrigatoria("PG_DB"),
 }
 
-# SQLAlchemy: para consultas com pandas (pd.read_sql), testes etc.
+# Engine postgres
 engine = create_engine(
     URL.create(
         drivername="postgresql+psycopg",
@@ -50,10 +49,8 @@ engine = create_engine(
     )
 )
 
-
-def conectar() -> psycopg.Connection:
+"""autocommit=True faz cada `with conn.transaction():' ser uma transação
+independente -> se um arquivo falhar, só ele é desfeito"""
     
-    """autocommit=True faz cada `with conn.transaction():` ser uma transação
-    real e independente: se um arquivo falhar, só ele é desfeito.
-    """
+def conectar() -> psycopg.Connection:
     return psycopg.connect(**PG, autocommit=True)
