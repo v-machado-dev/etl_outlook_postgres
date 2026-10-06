@@ -22,7 +22,7 @@ COLUNAS = {
     "Observação Conta": "observacao_conta",
     "Convenio": "convenio",
     "Classificacao": "classificacao",
-    "Status": "status",
+    "Status": "status_1",
     "Conta Enviada": "conta_enviada",
     "Data Entrada": "data_entrada",
     "Prontuario": "prontuario",
@@ -47,18 +47,24 @@ COLUNAS = {
     "Nº Protocolo Documento": "nr_protocolo_documento",
 }
 
-# Tipos de cada coluna (precisam bater com o CREATE TABLE em sql/001_estrutura.sql)
+# Grupos de cada coluna 
 COLUNAS_INTEIRAS = [
     "conta", "atendimento", "prontuario",
     "nr_titulo", "nr_protocolo", "nr_protocolo_documento",
 ]
-COLUNAS_DATA = ["data_entrada", "data_entrega", "data_titulo", "data_nf"]  # já vêm como data do Excel
+# já vêm como data do Excel
+COLUNAS_DATA = ["data_entrada", "data_entrega", "data_titulo", "data_nf"]  
 FORMATO_dt_etapa = "%d/%m/%Y %H:%M:%S"                          
-COLUNAS_TEXTO = [
+
+"""COLUNAS_TEXTO = [
     c for c in COLUNAS.values()
     if c not in COLUNAS_INTEIRAS + COLUNAS_DATA + ["dt_etapa", "vl_conta"]
-]
+]"""
 
+COLUNAS_TEXTO = []
+for c in COLUNAS.values():
+    if c not in COLUNAS_INTEIRAS + COLUNAS_DATA + ["dt_etapa", "vl_conta"]:
+        COLUNAS_TEXTO.append(c)
 
 # Hashing do arquivo (impressão digital para evitar carga duplicada)
 def calcular_hash(caminho: Path) -> str:
@@ -79,8 +85,8 @@ def extrair_data_envio(caminho: Path) -> datetime:
     tamanho = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_NOME))  # formato "dd-mm-aaaa_HH-MM"
     return datetime.strptime(caminho.name[:tamanho], FORMATO_DATA_NOME)
 
-"""Converte para texto sem o '.0' que números lidos do Excel costumam trazer."""
-def _para_texto(valor):
+# Converte para texto sem o '.0' que números lidos do Excel podem trazer
+def para_texto(valor):
     if valor is None or pd.isna(valor):
         return None
     if isinstance(valor, float) and valor.is_integer():
@@ -91,15 +97,16 @@ def _para_texto(valor):
 
 # Transformação: nomes e tipos no formato da tabela
 def preparar_df(df: pd.DataFrame) -> pd.DataFrame:
-    # falha logo se a planilha mudar de estrutura (coluna nova, removida ou renomeada)
-    faltando = set(COLUNAS) - set(df.columns)
+    faltando = set(COLUNAS) - set(df.columns)   
     sobrando = set(df.columns) - set(COLUNAS)
+
+    # falha se a planilha mudar de estrutura (coluna nova, removida ou renomeada)
     if faltando or sobrando:
         raise ValueError(f"Estrutura mudou. Faltando: {faltando} | Novas: {sobrando}")
 
     df = df.rename(columns=COLUNAS)[list(COLUNAS.values())].copy()
-
     df["dt_etapa"] = pd.to_datetime(df["dt_etapa"], format=FORMATO_dt_etapa, errors="raise")
+
     for col in COLUNAS_DATA:
         df[col] = pd.to_datetime(df[col], errors="raise")
 
@@ -110,15 +117,15 @@ def preparar_df(df: pd.DataFrame) -> pd.DataFrame:
     df["vl_conta"] = pd.to_numeric(df["vl_conta"], errors="raise").round(2)
 
     for col in COLUNAS_TEXTO:
-        df[col] = df[col].map(_para_texto)
+        df[col] = df[col].map(para_texto)
 
-    # o banco entende None como NULL; NaN, NaT e <NA> precisam ser convertidos
+    # Tratamento para vazios  - o banco entende None como NULL; NaN, NaT e <NA> precisam ser convertidos
     return df.astype(object).where(df.notna(), None)
 
 
 # Carregamento de um arquivo
 def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
-    """Carrega um arquivo. Retorna True se carregou, False se já tinha sido carregado."""
+    # Carrega um arquivo. Retorna True se carregou, False se já tinha sido carregado.
     hash_arquivo = calcular_hash(caminho)
 
     # checagem rápida antes de gastar tempo lendo o Excel
@@ -132,7 +139,7 @@ def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
     data_envio = extrair_data_envio(caminho)
     df = preparar_df(pd.read_excel(caminho, engine="calamine"))
 
-    # registro de controle + dados numa transação só: tudo ou nada
+    # registro de controle + dados numa transação só
     with conn.transaction():
         linha = conn.execute(
             """
@@ -151,6 +158,7 @@ def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
 
         load_id = linha[0]
 
+        # revisar esse trecho
         colunas_sql = ", ".join(["load_id", *df.columns])
         with conn.cursor() as cur:
             with cur.copy(f"COPY raw.base_tasy ({colunas_sql}) FROM STDIN") as copy:

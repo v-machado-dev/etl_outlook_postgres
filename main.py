@@ -1,4 +1,4 @@
-"""Executa o ETL completo: Outlook → landing zone → Postgres."""
+"""Ordem de exeução do o ETL  Outlook -> landing zone -> Postgres."""
 from loader import carregar_todos
 from outlook_extraction import extrair
 
