@@ -1,4 +1,4 @@
-# ETL Tasy — Totais de Contas
+# ETL Outlook —> PostgreSQL
 
 Pipeline ETL que extrai bases de dados .xlsx do Outlook (clássico),
 preserva o arquivo original em uma landing zone local e
