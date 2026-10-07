@@ -22,11 +22,9 @@ Características principais:
 
 - **Idempotente.** Executar duas vezes seguidas não gera dado duplicado.
 - **Janela dinâmica.** Se a máquina ficar dias desligada, a busca se estica
-  sozinha e recupera o atraso, sem furo no histórico.
-- **Falha alta e visível.** Qualquer inconsistência aborta a execução com
-  código de saída diferente de zero, em vez de carregar dado errado em
-  silêncio.
-- **Arquivos originais preservados.** A landing zone nunca é alterada.
+  sozinha e recupera o atraso, proteção contra lacunas no histórico.
+- **Falha alta e visível.** Qualquer inconsistência como colunas faltando, formatos novos aborta a execução e printa os logs
+- **Arquivos originais preservados.** Arquivos na landing zone nunca são alterados.
 
 ---
 
@@ -42,7 +40,7 @@ Características principais:
 
 ```bash
 git clone <url-do-repositorio>
-cd etl_tasy
+cd etl_outlook_postgres
 
 py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -62,26 +60,24 @@ etl_tasy/
 ├── config/
 │   └── colunas_referencia.json   cabeçalho esperado do arquivo
 ├── sql/
-│   └── ddl.sql                   criação das tabelas
-├── src/                          módulos do pipeline
-├── landing/AAAA/MM/              anexos originais (não versionado)
-├── logs/                         log rotativo (não versionado)
-├── .env                          configuração local (não versionado)
-├── .env.example
+│   └── 001_estrutura.sql         criação da tabela
+├── src/
+|      └── config.py              variaveis do sistema, BD              
+|      ├── loader.py              transformação e load dos dados
+|      ├── main.py                orquestrador 
+|      ├── outlook_extraction.py  extração Outlook -> Landing Zone
+|
+├── landing_zone/              
+├── logs/                         
+├── .env                          
 └── requirements.txt
 
 ---
 
 ## Modelo de dados
 
-Schema: `tasy`
+Schema: 
 
-| Tabela | Papel |
-|---|---|
-| `stg_totais_contas` | Espelho do arquivo em texto, truncada a cada carga |
-| `fato_totais_contas` | Histórico tipado e acumulativo |
-| `ctrl_arquivo_processado` | Auditoria e trava de duplicidade |
-| `ctrl_excecao_mensagem` | Válvula de escape manual |
 
 ---
 

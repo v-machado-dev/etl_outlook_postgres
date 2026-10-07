@@ -1,4 +1,6 @@
-"""Carga: lê os arquivos da landing zone e grava no Postgres com controle de versões."""
+# Carga: lê os arquivos da pasta "landing zone" e grava
+# no Postgres com controle de versões.
+
 import hashlib
 from datetime import datetime
 from pathlib import Path
@@ -6,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import psycopg
 
-from config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS, conectar
+from src.config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS, conectar
 
 # nomeação das colunas do BD
 COLUNAS = {

@@ -1,7 +1,7 @@
 -- Estrutura do banco etl_tasy
 --
 -- Pré-requisitos (feitos uma vez, conectado ao banco "postgres"):
---   CREATE ROLE etl_user WITH LOGIN PASSWORD '...';   -- senha fica fora do repositório
+--   CREATE ROLE etl_user WITH LOGIN PASSWORD '...';   
 --   CREATE DATABASE etl_tasy OWNER etl_user ENCODING 'UTF8' TEMPLATE template0;
 
 -- Como rodar: pgAdmin -> Query Tool NO BANCO etl_tasy -> F5
@@ -18,7 +18,7 @@ CREATE SCHEMA etl;   -- controle do processo (metadados)
 CREATE SCHEMA raw;   -- dados brutos
 
 
--- Tabela para controle. load_id = PK - versão da carga.
+-- Tabela para controle. load_id = PK : versão da carga.
 CREATE TABLE etl.controle_cargas (
     load_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome_arquivo  TEXT        NOT NULL,
