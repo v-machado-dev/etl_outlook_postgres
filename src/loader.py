@@ -58,10 +58,6 @@ COLUNAS_INTEIRAS = [
 COLUNAS_DATA = ["data_entrada", "data_entrega", "data_titulo", "data_nf"]  
 FORMATO_dt_etapa = "%d/%m/%Y %H:%M:%S"                          
 
-"""COLUNAS_TEXTO = [
-    c for c in COLUNAS.values()
-    if c not in COLUNAS_INTEIRAS + COLUNAS_DATA + ["dt_etapa", "vl_conta"]
-]"""
 
 COLUNAS_TEXTO = []
 for c in COLUNAS.values():

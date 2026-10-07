@@ -1,4 +1,4 @@
-"""Configuração central do projeto: lê o .env e expõe pastas e conexões."""
+# Configuração central do projeto. Lê o .env e carrga pastas e conexões.
 import os
 from pathlib import Path
 
@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 
-load_dotenv()  # carrega as variáveis na memória
+# Carrega as variáveis na memória
+load_dotenv()  
 
 # Lê uma variável do .env e falha se ela não existir.
 def _obrigatoria(nome: str) -> str:
@@ -15,7 +16,6 @@ def _obrigatoria(nome: str) -> str:
     if not valor:
         raise RuntimeError(f"Variável '{nome}' não definida no .env")
     return valor
-
 
 # Pastas
 LANDING_ZONE = Path(_obrigatoria("LANDING_ZONE"))
