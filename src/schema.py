@@ -12,6 +12,6 @@ NOME_DESTINO = [c["destino"] for c in DICTIONARIES]
 
 
 # Formato da data no nome dos arquivos da landing zone.
-# A extração usa para GRAVAR o nome e a carga usa para LER a data de volta,
+# A extração usa para GRAVAR o nome e a carga usa para LER a data de volta
 FORMATO_DATA_NOME = "%d-%m-%Y_%H-%M"
 

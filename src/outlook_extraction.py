@@ -7,10 +7,10 @@ from config.config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS
 
 PASTA_OUTLOOK = "Base_3352"
 EXTENSOES_ACEITAS = {".xls", ".xlsx"}
-OL_MAIL_ITEM = 43  # tipo "e-mail" no Outlook (ignora convites, relatórios de entrega etc.)
+OL_MAIL_ITEM = 43  
 
 
-# segurança contra nomes inválidos
+# segurança contra caracteres inválidos
 def nome_seguro(nome: str) -> str:
     return re.sub(r'[<>:"/\\|?*]', "_", nome).strip()
 
@@ -19,9 +19,9 @@ def nome_seguro(nome: str) -> str:
 def formato_real(caminho: Path) -> str | None:
     with open(caminho, "rb") as f:
         assinatura = f.read(8)
-    if assinatura.startswith(b"PK\x03\x04"):          #  -> .xlsx
+    if assinatura.startswith(b"PK\x03\x04"):          
         return ".xlsx"
-    if assinatura.startswith(b"\xD0\xCF\x11\xE0"):    # OLE -> .xls
+    if assinatura.startswith(b"\xD0\xCF\x11\xE0"):    
         return ".xls"
     return None
 
@@ -31,7 +31,7 @@ def extrair() -> int:
     # chama a API do outlook
     outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
 
-    # 6 = Caixa de Entrada e acessa subpasta criada no préviamente outlook "Base_3352"
+    # 6 = Caixa de Entrada e acessa subpasta criada préviamente no outlook "Base_3352"
     pasta = outlook.GetDefaultFolder(6).Folders(PASTA_OUTLOOK)  
 
     itens = pasta.Items
@@ -39,7 +39,7 @@ def extrair() -> int:
 
     salvos = 0
     for msg in itens:
-        if msg.Class != OL_MAIL_ITEM:
+        if msg.Class != OL_MAIL_ITEM:    # tipo "e-mail" no Outlook (ignora convites, relatórios de entrega etc.)
             continue
 
         data_envio = msg.SentOn.strftime(FORMATO_DATA_NOME)
@@ -67,8 +67,8 @@ def extrair() -> int:
              
             nome_final = f"{data_envio}_{nome_seguro(stem)}{ext_real}"
 
-            #  Deleta se já foi carregado antes
-            #  (aguardando na landing zone / já carregado em processados)
+            #  Deleta se já foi carregado antes - 
+            # (aguardando na landing zone / já carregado em processados)
             if (LANDING_ZONE / nome_final).exists() or (PROCESSADOS / nome_final).exists():
                 temp.unlink()
                 continue

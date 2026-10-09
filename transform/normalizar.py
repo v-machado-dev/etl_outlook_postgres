@@ -4,8 +4,8 @@ import pandas as pd
 from src.schema import COLUNAS, FORMATO_DATA_NOME, NOME_DESTINO, NOME_ORIGEM
 
  
-FORMATO_data_nf = "%d/%m/%Y %H:%M:%S"
 # tratar data_nf (remover %Hora%Min%Seg)
+FORMATO_data_nf = "%d/%m/%Y %H:%M:%S"
 def tratar_data_nf(df: pd.DataFrame) -> pd.DataFrame:
     df['data_nf'] = pd.to_datetime(df['data_nf'], format=FORMATO_data_nf).dt.date
     return df
@@ -20,7 +20,7 @@ for c in COLUNAS.values():
         COLUNAS_TEXTO.append(c)
 
  
-# retira o '.0' e converte valores para texto 
+# retirar o '.0' e converte valores para texto 
 def para_texto(valor):
     if valor is None or pd.isna(valor):
         return None
@@ -35,7 +35,7 @@ def preparar_df(df: pd.DataFrame) -> pd.DataFrame:
     faltando = set(COLUNAS) - set(df.columns)   
     sobrando = set(df.columns) - set(COLUNAS)
 
-    # falha se a planilha mudar de estrutura (coluna nova, removida ou renomeada)
+    # falha se a planilha base mudar de estrutura (coluna nova, removida ou renomeada)
     if faltando or sobrando:
         raise ValueError(f"Estrutura mudou. Faltando: {faltando} | Novas: {sobrando}")
 
@@ -48,6 +48,9 @@ def preparar_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in COLUNAS_TEXTO:
         df[col] = df[col].map(para_texto)
 
-    # Tratamento para vazios 
-    # NULL, NaN, NaT e <NA> são convertidos para None
+    # Tratamento para vazios - NULL, NaN, NaT e <NA> são convertidos para None
     return df.astype(object).where(df.notna(), None)
+
+
+if __name__ == "__main__":
+    preparar_df()

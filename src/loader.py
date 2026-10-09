@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import psycopg
 
+from transform.normalizar import preparar_df
 from src.schema import COLUNAS, FORMATO_DATA_NOME, NOME_DESTINO, NOME_ORIGEM 
 from config.config import  LANDING_ZONE, PROCESSADOS, conectar
 
@@ -21,7 +22,6 @@ def calcular_hash(caminho: Path) -> str:
             return f.read(65536)     
         for bloco in iter(ler_proximo_bloco, b""):
             h.update(bloco)
-
     return h.hexdigest()
 
 
@@ -33,10 +33,10 @@ def extrair_data_envio(caminho: Path) -> datetime:
 
 # Carregamento de um arquivo
 def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
-    # Carrega um arquivo. Retorna True se carregou, False se já tinha sido carregado.
+    
     hash_arquivo = calcular_hash(caminho)
 
-    # checagem rápida antes de gastar tempo lendo o Excel
+    # checagem antes de gastar tempo lendo o Excel
     # (a proteção definitiva é o UNIQUE + ON CONFLICT logo abaixo)
     if conn.execute(
         "SELECT 1 FROM etl.controle_cargas WHERE hash_arquivo = %s", (hash_arquivo,)).fetchone():
