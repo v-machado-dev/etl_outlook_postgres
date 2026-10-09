@@ -23,9 +23,6 @@ PROCESSADOS = Path(_obrigatoria("PROCESSADOS"))
 LANDING_ZONE.mkdir(parents=True, exist_ok=True)
 PROCESSADOS.mkdir(parents=True, exist_ok=True)
 
-# Formato da data no nome dos arquivos da landing zone.
-# A extração usa para GRAVAR o nome e a carga usa para LER a data de volta,
-FORMATO_DATA_NOME = "%d-%m-%Y_%H-%M"
 
 # Informações do Banco de dados
 PG = {

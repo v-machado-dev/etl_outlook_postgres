@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 import win32com.client
 
-from src.config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS
+from config.config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS
 
 PASTA_OUTLOOK = "Base_3352"
 EXTENSOES_ACEITAS = {".xls", ".xlsx"}

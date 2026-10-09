@@ -8,70 +8,17 @@ from pathlib import Path
 import pandas as pd
 import psycopg
 
-from src.config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS, conectar
-
-# nomeação das colunas do BD
-COLUNAS = {
-    "Conta": "conta",
-    "Setor Atend": "setor_atend",
-    "Atendimento": "atendimento",
-    "Doc. Convênio": "doc_convenio",
-    "Médico": "medico",
-    "Etapa": "etapa",
-    "Dt Etapa": "dt_etapa",
-    "Observação Etapa": "observacao_etapa",
-    "Tipo Obs Conta": "tipo_obs_conta",
-    "Observação Conta": "observacao_conta",
-    "Convenio": "convenio",
-    "Classificacao": "classificacao",
-    "Status": "status_1",
-    "Conta Enviada": "conta_enviada",
-    "Data Entrada": "data_entrada",
-    "Prontuario": "prontuario",
-    "Paciente": "paciente",
-    "Estab atend": "estab_atend",
-    "Data Entrega": "data_entrega",
-    "Status protocolo": "status_protocolo",
-    "Vl conta": "vl_conta",
-    "Data Titulo": "data_titulo",
-    "Nr Titulo": "nr_titulo",
-    "Nr Protocolo": "nr_protocolo",
-    "Desc Protocolo": "desc_protocolo",
-    "Nr Guia": "nr_guia",
-    "Senha": "senha",
-    "Usuario Convenio": "usuario_convenio",
-    "Plano": "plano",
-    "Categoria": "categoria",
-    "Estab conta": "estab_conta",
-    "Status.1": "status_2",
-    "Data NF": "data_nf",
-    "Usuário Etapa": "usuario_etapa",
-    "Nº Protocolo Documento": "nr_protocolo_documento",
-}
-
-# Grupos de cada coluna 
-COLUNAS_INTEIRAS = [
-    "conta", "atendimento", "prontuario",
-    "nr_titulo", "nr_protocolo", "nr_protocolo_documento",
-]
-# já vêm como data do Excel
-COLUNAS_DATA = ["data_entrada", "data_entrega", "data_titulo", "data_nf"]  
-FORMATO_dt_etapa = "%d/%m/%Y %H:%M:%S"                          
+from src.schema import COLUNAS, FORMATO_DATA_NOME, NOME_DESTINO, NOME_ORIGEM 
+from config.config import  LANDING_ZONE, PROCESSADOS, conectar
 
 
-COLUNAS_TEXTO = []
-for c in COLUNAS.values():
-    if c not in COLUNAS_INTEIRAS + COLUNAS_DATA + ["dt_etapa", "vl_conta"]:
-        COLUNAS_TEXTO.append(c)
-
-# Hashing do arquivo (impressão digital para evitar carga duplicada)
+# Hashing do arquivo para evitar carga duplicada
 def calcular_hash(caminho: Path) -> str:
     h = hashlib.sha256()
 
     with open(caminho, "rb") as f:
         def ler_proximo_bloco():
-            return f.read(65536)     # 64 KB por vez
-
+            return f.read(65536)     
         for bloco in iter(ler_proximo_bloco, b""):
             h.update(bloco)
 
@@ -83,43 +30,6 @@ def extrair_data_envio(caminho: Path) -> datetime:
     tamanho = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_NOME))  # formato "dd-mm-aaaa_HH-MM"
     return datetime.strptime(caminho.name[:tamanho], FORMATO_DATA_NOME)
 
-# Converte para texto sem o '.0' que números lidos do Excel podem trazer
-def para_texto(valor):
-    if valor is None or pd.isna(valor):
-        return None
-    if isinstance(valor, float) and valor.is_integer():
-        return str(int(valor))
-    texto = str(valor).strip()
-    return texto or None
-
-
-# Transformação: nomes e tipos no formato da tabela
-def preparar_df(df: pd.DataFrame) -> pd.DataFrame:
-    faltando = set(COLUNAS) - set(df.columns)   
-    sobrando = set(df.columns) - set(COLUNAS)
-
-    # falha se a planilha mudar de estrutura (coluna nova, removida ou renomeada)
-    if faltando or sobrando:
-        raise ValueError(f"Estrutura mudou. Faltando: {faltando} | Novas: {sobrando}")
-
-    df = df.rename(columns=COLUNAS)[list(COLUNAS.values())].copy()
-    df["dt_etapa"] = pd.to_datetime(df["dt_etapa"], format=FORMATO_dt_etapa, errors="raise")
-
-    for col in COLUNAS_DATA:
-        df[col] = pd.to_datetime(df[col], errors="raise")
-
-    # "Int64" (I maiúsculo) = inteiro que aceita vazio; falha se houver valor não inteiro
-    for col in COLUNAS_INTEIRAS:
-        df[col] = pd.to_numeric(df[col], errors="raise").astype("Int64")
-
-    df["vl_conta"] = pd.to_numeric(df["vl_conta"], errors="raise").round(2)
-
-    for col in COLUNAS_TEXTO:
-        df[col] = df[col].map(para_texto)
-
-    # Tratamento para vazios  - o banco entende None como NULL; NaN, NaT e <NA> precisam ser convertidos
-    return df.astype(object).where(df.notna(), None)
-
 
 # Carregamento de um arquivo
 def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
@@ -129,8 +39,7 @@ def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
     # checagem rápida antes de gastar tempo lendo o Excel
     # (a proteção definitiva é o UNIQUE + ON CONFLICT logo abaixo)
     if conn.execute(
-        "SELECT 1 FROM etl.controle_cargas WHERE hash_arquivo = %s", (hash_arquivo,)
-    ).fetchone():
+        "SELECT 1 FROM etl.controle_cargas WHERE hash_arquivo = %s", (hash_arquivo,)).fetchone():
         print(f"[PULADO] Já importado anteriormente: {caminho.name}")
         return False
 
@@ -156,7 +65,7 @@ def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
 
         load_id = linha[0]
 
-        # revisar esse trecho
+        # --- revisar esse trecho ---
         colunas_sql = ", ".join(["load_id", *df.columns])
         with conn.cursor() as cur:
             with cur.copy(f"COPY raw.base_tasy ({colunas_sql}) FROM STDIN") as copy:
