@@ -1,25 +1,23 @@
 # Transformação das colunas em seus respectivos tipos de dado
-
 import pandas as pd
-from src.schema import COLUNAS, FORMATO_DATA_NOME, NOME_DESTINO, NOME_ORIGEM
-
- 
-# tratar data_nf (remover %Hora%Min%Seg)
-FORMATO_data_nf = "%d/%m/%Y %H:%M:%S"
-def tratar_data_nf(df: pd.DataFrame) -> pd.DataFrame:
-    df['data_nf'] = pd.to_datetime(df['data_nf'], format=FORMATO_data_nf).dt.date
-    return df
+from src.schema import COLUNAS, NOME_DESTINO
 
 
-# Segmentação de cada coluna em grupos
-COLUNAS_DATA = ["dt_etapa", "data_entrada", "data_entrega", "data_titulo", "data_nf"]  
+# Segmentação de cada coluna
+COLUNAS_DATA = {
+    "dt_etapa": "%d/%m/%Y %H:%M:%S",
+    "data_entrada": None, 
+    "data_entrega": None,
+    "data_titulo":  None, 
+    "data_nf": None,
+} 
 COLUNAS_NUMERICAS = ["vl_conta"]
 COLUNAS_TEXTO = []
-for c in COLUNAS.values():
-    if c not in COLUNAS_DATA + COLUNAS_NUMERICAS:
+for c in NOME_DESTINO:
+    if c not in [*COLUNAS_DATA, *COLUNAS_NUMERICAS]:
         COLUNAS_TEXTO.append(c)
 
- 
+
 # retirar o '.0' e converte valores para texto 
 def para_texto(valor):
     if valor is None or pd.isna(valor):
@@ -39,8 +37,10 @@ def preparar_df(df: pd.DataFrame) -> pd.DataFrame:
     if faltando or sobrando:
         raise ValueError(f"Estrutura mudou. Faltando: {faltando} | Novas: {sobrando}")
 
-    for col in COLUNAS_DATA:
-        df[col] = pd.to_datetime(df[col], errors="raise")
+    df = df.rename(columns=COLUNAS)
+
+    for col in COLUNAS_DATA.items():
+        df[col] = pd.to_datetime(df[col], errors="raise").dt.date
 
     for col in COLUNAS_NUMERICAS:
         df[col] = pd.to_numeric(df[col], errors="raise").round(2)

@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 import win32com.client
 
-from config.config import FORMATO_DATA_NOME, LANDING_ZONE, PROCESSADOS
+from src.schema import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS
 
 PASTA_OUTLOOK = "Base_3352"
 EXTENSOES_ACEITAS = {".xls", ".xlsx"}
@@ -42,7 +42,7 @@ def extrair() -> int:
         if msg.Class != OL_MAIL_ITEM:    # tipo "e-mail" no Outlook (ignora convites, relatórios de entrega etc.)
             continue
 
-        data_envio = msg.SentOn.strftime(FORMATO_DATA_NOME)
+        data_envio = msg.SentOn.strftime(FORMATO_DATA_ARQUIVO)
 
         # separação do nome original em radical e sufixo
         for anexo in msg.Attachments:

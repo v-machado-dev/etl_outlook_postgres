@@ -9,7 +9,7 @@ import pandas as pd
 import psycopg
 
 from transform.normalizar import preparar_df
-from src.schema import COLUNAS, FORMATO_DATA_NOME, NOME_DESTINO, NOME_ORIGEM 
+from src.schema import DE_PARA_COLUNAS, FORMATO_DATA_ARQUIVO 
 from config.config import  LANDING_ZONE, PROCESSADOS, conectar
 
 
@@ -27,8 +27,8 @@ def calcular_hash(caminho: Path) -> str:
 
 # Data de envio do e-mail, lida de volta do nome do arquivo
 def extrair_data_envio(caminho: Path) -> datetime:
-    tamanho = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_NOME))  # formato "dd-mm-aaaa_HH-MM"
-    return datetime.strptime(caminho.name[:tamanho], FORMATO_DATA_NOME)
+    tamanho = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_ARQUIVO))  # formato "dd-mm-aaaa_HH-MM"
+    return datetime.strptime(caminho.name[:tamanho], FORMATO_DATA_ARQUIVO)
 
 
 # Carregamento de um arquivo
@@ -87,7 +87,7 @@ def carregar_todos() -> None:
         try:
             extrair_data_envio(arq)
         except ValueError:
-            print(f"[AVISO] Nome fora do padrão '{FORMATO_DATA_NOME}_...', ignorado: {arq.name}")
+            print(f"[AVISO] Nome fora do padrão '{FORMATO_DATA_ARQUIVO}_...', ignorado: {arq.name}")
             continue
         arquivos.append(arq)
 

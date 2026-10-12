@@ -49,4 +49,4 @@ engine = create_engine(
 # autocommit=True faz cada `with conn.transaction()
 # evita que o pipeline quebre caso um dos arquivos retorne erro -> apenas o "errado" é interrompido    
 def conectar() -> psycopg.Connection:
-    return psycopg.connect(**PG, autocommit=True)
+        return psycopg.connect(**PG, autocommit=True)

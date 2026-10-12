@@ -2,16 +2,14 @@
 import json
 from pathlib import Path
 
+RAIZ_PROJETO = Path(__file__).resolve().parents[1]
+SCHEMA = json.loads((RAIZ_PROJETO / "config" / "schema.json").read_text(encoding="utf-8"))
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-SCHEMA = json.loads((BASE_DIR / "config" / "schema.json").read_text(encoding="utf-8"))
+DEFINICOES_COLUNAS = SCHEMA["colunas"]
 
-DICTIONARIES = SCHEMA["colunas"]
-NOME_ORIGEM = [c["origem"] for c in DICTIONARIES]
-NOME_DESTINO = [c["destino"] for c in DICTIONARIES]
-
+DE_PARA_COLUNAS = {c["origem"]: c["destino"] for c in DEFINICOES_COLUNAS}
 
 # Formato da data no nome dos arquivos da landing zone.
 # A extração usa para GRAVAR o nome e a carga usa para LER a data de volta
-FORMATO_DATA_NOME = "%d-%m-%Y_%H-%M"
+FORMATO_DATA_ARQUIVO = "%d-%m-%Y_%H-%M"
 
