@@ -14,12 +14,12 @@ SET ROLE etl_user;
 
 ALTER DATABASE pipeline_3352 SET timezone TO 'America/Sao_Paulo';
 
-CREATE SCHEMA etl;   -- metadados para controle do processo
-CREATE SCHEMA raw;   -- dados brutos
+CREATE SCHEMA IF NOT EXISTS etl;   -- metadados para controle do processo
+CREATE SCHEMA IF NOT EXISTS raw;   -- dados brutos
 
 
 -- Tabela de controle
-CREATE TABLE etl.controle_cargas (
+CREATE TABLE IF NOT EXISTS etl.controle_cargas (
     load_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome_arquivo  TEXT        NOT NULL,
     hash_arquivo  CHAR(64)    NOT NULL UNIQUE,   -- proteção contra carregar o mesmo arquivo duas vezes
@@ -30,7 +30,7 @@ CREATE TABLE etl.controle_cargas (
 
 
 -- Tabela dos dados
-CREATE TABLE raw.base_tasy (
+CREATE TABLE IF NOT EXISTS raw.base_tasy (
     id                      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     load_id                 BIGINT NOT NULL REFERENCES etl.controle_cargas (load_id),
 
@@ -71,13 +71,13 @@ CREATE TABLE raw.base_tasy (
     nr_protocolo_documento  TEXT
 );
 
-CREATE INDEX ix_base_tasy_load_id ON raw.base_tasy (load_id);
+CREATE INDEX IF NOT EXISTS ix_base_tasy_load_id ON raw.base_tasy (load_id);
 
 
 -- Retrato mais recente: a carga do e-mail enviado por último
 -- (usa data_envio, e não max(load_id), para continuar certa mesmo se
 --  um arquivo antigo for carregado depois de um mais novo)
-CREATE VIEW raw.vw_base_tasy_atual AS
+CREATE OR REPLACE VIEW raw.vw_base_tasy_atual AS
 SELECT b.*
 FROM raw.base_tasy b
 WHERE b.load_id = (

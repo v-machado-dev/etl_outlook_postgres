@@ -1,139 +1,71 @@
-# ETL Outlook —> PostgreSQL
+# ETL Outlook → PostgreSQL
 
-Pipeline ETL que extrai bases de dados .xlsx do Outlook (clássico),
-preserva o arquivo original em uma landing zone local e
-carrega os dados em um banco PostgreSQL, com controle de versionamento.
-
-O relatório é um retrato diário da movimentação e atualização
-das contas, no caso, do Faturamento da OncologiaD'or: a mesma conta reaparece nos arquivos dos dias
-seguintes com informações: etapas, status, dentre outros, possivelmente diferentes. O histórico existe para
-permitir a análise dessa evolução ao longo do tempo.
-
----
-
-## Visão geral
+Baixa os relatórios .xlsx/.xls recebidos no Outlook (pasta `Base_3352`),
+guarda o original numa landing zone e carrega no PostgreSQL, mantendo
+o histórico de cada versão diária do relatório.
 
 ```
-Outlook → validação do anexo → landing zone → controle de duplicidade
-→ leitura e transformação → PostgreSQL → log e auditoria
+Outlook → landing zone → transformação → PostgreSQL → pasta processados
 ```
 
-Características principais:
-
-- **Idempotente.** Executar duas vezes seguidas não gera dado duplicado.
-- **Janela dinâmica.** Se a máquina ficar dias desligada, a busca se estica
-  sozinha e recupera o atraso, proteção contra lacunas no histórico.
-- **Falha alta e visível.** Qualquer inconsistência como colunas faltando, formatos novos aborta a execução e printa os logs
-- **Arquivos originais preservados.** Arquivos na landing zone nunca são alterados.
-
----
+- **Idempotente:** rodar duas vezes não duplica dados (nome do arquivo + SHA-256).
+- **Falha visível:** coluna faltando/nova ou tipo inválido aborta só aquele arquivo, que fica na landing zone para nova tentativa.
+- **Originais preservados:** os arquivos nunca são alterados, só movidos para `PROCESSADOS` após a carga.
 
 ## Requisitos
 
-- Windows com Outlook clássico instalado e perfil configurado
+- Windows com Outlook clássico configurado
 - Python 3.13
-- PostgreSQL local
-
----
+- PostgreSQL
 
 ## Instalação
 
 ```bash
-git clone <url-do-repositorio>
-cd etl_outlook_postgres
-
 py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
 pip install -r requirements.txt
+copy .env.example .env      # e preencha os valores
 ```
 
-Dependências: `pywin32`, `openpyxl`, `pandas`, `psycopg[binary]`,
-`python-dotenv`.
+Crie o banco rodando `sql/001_estrutura.sql` no pgAdmin (instruções no próprio arquivo).
 
----
+## Execução
 
-## Estrutura do projeto
+Sempre a partir da raiz do projeto:
+
+```bash
+python -m src.main                  # extração + carga
+python -m src.outlook_extraction    # só extração
+python -m src.loader                # só carga
+```
+
+## Estrutura
 
 ```
-etl_tasy/
-├── config/
-│   └── colunas_referencia.json   cabeçalho esperado do arquivo
-├── sql/
-│   └── 001_estrutura.sql         criação da tabela
+├── config/schema.json        de-para das colunas (Excel → tabela)
+├── sql/001_estrutura.sql     criação de schemas, tabelas e view
 ├── src/
-|      └── config.py              variaveis do sistema, BD              
-|      ├── loader.py              transformação e load dos dados
-|      ├── main.py                orquestrador 
-|      ├── outlook_extraction.py  extração Outlook -> Landing Zone
-|
-├── landing_zone/              
-├── logs/                         
-├── .env                          
+│   ├── config.py             .env, pastas, conexão
+│   ├── outlook_extraction.py Outlook → landing zone
+│   ├── normalizar.py         nomes e tipos das colunas
+│   ├── loader.py             landing zone → Postgres
+│   └── main.py               orquestrador
+├── .env.example
 └── requirements.txt
-
----
+```
 
 ## Modelo de dados
 
-Schema: 
+- `etl.controle_cargas` — uma linha por arquivo carregado (hash único, data de envio).
+- `raw.base_tasy` — dados de todas as cargas, ligados por `load_id`.
+- `raw.vw_base_tasy_atual` — retrato mais recente (último e-mail enviado).
 
+## Problemas comuns
 
----
-
-## Controle de duplicidade
-
-São duas travas feitas em momentos distintos:
-
-1. **`InternetMessageID`** — consultado antes de baixar o anexo. Evita
-   reprocessar os mesmos e-mails diariamente por causa da sobreposição da
-   janela de busca.
-2. **SHA-256 do anexo** — calculado apenas para e-mails novos. Cobre o reenvio
-   do mesmo relatório em mensagem diferente.
-
----
-
-## Códigos de saída
-
-| Código | Significado |
-|---|---|
-| `0` | Sucesso (inclusive quando não há e-mail novo) |
-| `1` | Falha de ambiente ou configuração |
-| `2` | Falha de validação (anexo, cabeçalho, unicidade, conversão) |
-| `3` | Falha de banco de dados |
-
----
-
-## Solução de problemas
-
-**Erro de conexão COM com o Outlook**
-Verifique se o script e o Outlook rodam no mesmo nível de privilégio. Script
-como administrador + Outlook como usuário comum sempre falha.
-
-**`pywin32` não instala**
-Confirme que o ambiente virtual usa Python 3.13. Versões muito recentes do
-Python podem não ter wheel disponível.
-
-**Nenhum e-mail encontrado**
-Verifique `OUTLOOK_FOLDER_PATH`. Se houver regra do Outlook movendo a mensagem
-para uma subpasta, a Caixa de Entrada estará vazia do alvo.
-
-**Pipeline abortando sempre no mesmo e-mail**
-Registre o `InternetMessageID` da mensagem em `ctrl_excecao_mensagem` com o
-motivo. A próxima execução passa por cima dela.
-
-**Erro de cabeçalho divergente**
-O relatório de origem mudou de estrutura. Compare o cabeçalho recebido com
-`config/colunas_referencia.json` antes de atualizar a referência — a mudança
-pode exigir alteração no modelo de dados.
-
----
+- **Erro COM com o Outlook:** script e Outlook precisam rodar no mesmo nível de privilégio (ambos sem admin).
+- **"Estrutura mudou":** o relatório de origem mudou. Compare com `config/schema.json` e, se preciso, ajuste o SQL.
 
 ## Privacidade
 
-A base contém informações sensíveis de pacientes, colaboradores da rede, médicos e etc.
-Portanto, a pasta da landing zone e o banco devem ter acesso restrito ao
-usuário do pipeline.
-
-Este repositório não deve conter dados reais, arquivos da landing zone, dumps
-do banco nem o arquivo `.env`.
+A base contém dados sensíveis de pacientes e colaboradores. Landing zone e banco
+devem ter acesso restrito. Nunca versionar dados reais nem o `.env`.

@@ -1,4 +1,4 @@
-# Ordem de exeução do o ETL  Outlook -> landing zone -> Postgres.
+# Ordem de execução do ETL: Outlook -> landing zone -> Postgres.
 from src.loader import carregar_todos
 from src.outlook_extraction import extrair
 
