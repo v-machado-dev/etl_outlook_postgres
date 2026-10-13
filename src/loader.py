@@ -6,8 +6,8 @@ from pathlib import Path
 import pandas as pd
 import psycopg
 
-from src.config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS, conectar
-from src.normalizar import preparar_df
+from config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS, conectar
+from normalizar import preparar_df
 
 TAMANHO_DATA = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_ARQUIVO))  # "dd-mm-aaaa_HH-MM"
 
@@ -49,6 +49,7 @@ def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
             print(f"[PULADO] Já importado anteriormente: {caminho.name}")
             return False
 
+        #  ------ rever esse bloco  ------ #
         load_id = linha[0]
         colunas_sql = ", ".join(["load_id", *df.columns])
         with conn.cursor() as cur, cur.copy(f"COPY raw.base_tasy ({colunas_sql}) FROM STDIN") as copy:

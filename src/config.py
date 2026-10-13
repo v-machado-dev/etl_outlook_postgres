@@ -19,8 +19,8 @@ def _obrigatoria(nome: str) -> str:
 
 
 # Pastas
-LANDING_ZONE = Path(_obrigatoria("LANDING_ZONE"))
-PROCESSADOS = Path(_obrigatoria("PROCESSADOS"))
+LANDING_ZONE = RAIZ_PROJETO / _obrigatoria("LANDING_ZONE")
+PROCESSADOS = RAIZ_PROJETO / _obrigatoria("PROCESSADOS")
 LANDING_ZONE.mkdir(parents=True, exist_ok=True)
 PROCESSADOS.mkdir(parents=True, exist_ok=True)
 
