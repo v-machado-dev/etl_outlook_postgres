@@ -1,7 +1,7 @@
 # Transformação: renomeia as colunas e converte cada uma para o tipo da tabela.
 import pandas as pd
 
-from config import DE_PARA_COLUNAS
+from src.config import DE_PARA_COLUNAS
 
 COLUNAS_DATA = ["dt_etapa", "data_entrada", "data_entrega", "data_titulo", "data_nf"]
 COLUNAS_NUMERICAS = ["vl_conta"]

@@ -6,8 +6,8 @@ from pathlib import Path
 import pandas as pd
 import psycopg
 
-from config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS, conectar
-from normalizar import preparar_df
+from src.config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS, conectar
+from src.normalizar import preparar_df
 
 TAMANHO_DATA = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_ARQUIVO))  # "dd-mm-aaaa_HH-MM"
 

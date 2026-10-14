@@ -4,7 +4,7 @@ from pathlib import Path
 
 import win32com.client
 
-from config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS
+from src.config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS
 
 PASTA_OUTLOOK = "Base_3352"
 EXTENSOES_ACEITAS = {".xls", ".xlsx"}

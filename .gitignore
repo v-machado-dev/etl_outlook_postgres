@@ -12,6 +12,7 @@ processados/
 .venv/
 venv/
 __pycache__/
+data/
 *.pyc
 
 # cópia dos arquivos antes das alterações
