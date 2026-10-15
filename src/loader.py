@@ -1,101 +1,130 @@
-# Carga: lê os arquivos da landing zone e grava no Postgres com controle de versões.
-import hashlib
-from datetime import datetime
-from pathlib import Path
 
 import pandas as pd
-import psycopg
+import hashlib
+import time
+from datetime import datetime 
 
-from src.config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS, conectar
-from src.normalizar import preparar_df
+from config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS, conectar
+from normalizar import preparar_df
 
-TAMANHO_DATA = len(datetime(2000, 1, 1).strftime(FORMATO_DATA_ARQUIVO))  # "dd-mm-aaaa_HH-MM"
+# tamanho da data no nome do arquivo
+TAMANHO_DATA = len(datetime(2000, 1, 1). strftime(FORMATO_DATA_ARQUIVO))
 
+# hashing das colunas
+def calcular_hash(caminho):
+    conteudo = caminho.read_bytes()
+    h = hashlib.sha256(conteudo)
+    return h.hexdigest()
 
-# Hash do arquivo, para evitar carga duplicada
-def calcular_hash(caminho: Path) -> str:
-    return hashlib.sha256(caminho.read_bytes()).hexdigest()
+# retorna a data de envio do email do nome do arquivo
+def extrair_data_envio(caminho):
+    texto_data = caminho.name[:TAMANHO_DATA]
+    return datetime.strptime(texto_data, FORMATO_DATA_ARQUIVO)
 
-
-# Data de envio do e-mail, lida de volta do nome do arquivo
-def extrair_data_envio(caminho: Path) -> datetime:
-    return datetime.strptime(caminho.name[:TAMANHO_DATA], FORMATO_DATA_ARQUIVO)
-
-
-# Carrega um arquivo. Retorna False se ele já tinha sido carregado.
-def ingest(caminho: Path, conn: psycopg.Connection) -> bool:
+# ingestão do arquivo no bd -> False se já foi carregado antes
+def ingest(caminho, conn):
     hash_arquivo = calcular_hash(caminho)
 
-    # checagem rápida antes de ler o Excel (a proteção definitiva é o UNIQUE + ON CONFLICT)
-    if conn.execute("SELECT 1 FROM etl.controle_cargas WHERE hash_arquivo = %s", (hash_arquivo,)).fetchone():
-        print(f"[PULADO] Já importado anteriormente: {caminho.name}")
+    # verifica se o arquivo já existe no BD
+    exist = conn.execute(
+        "SELECT 1 FROM etl.controle_cargas WHERE hash_arquivo = %s", (hash_arquivo,)
+    ).fetchone()
+    if exist:
+        print(f"[PULADO] arquivo já importado anteriormente: {caminho.name}")
         return False
 
-    df = preparar_df(pd.read_excel(caminho, engine="calamine"))
+    inicio  = time.time()
+    df = pd.read_excel(caminho, engine="calamine")
+    tempo_leitura = time.time() - inicio
 
-    # registro de controle + dados numa transação só
+    inicio = time.time()
+    df = preparar_df(df)
+    tempo_transformacao = time.time() - inicio
+
+    inicio = time.time()
+
     with conn.transaction():
         linha = conn.execute(
-            """
-            INSERT INTO etl.controle_cargas (nome_arquivo, hash_arquivo, data_envio, qtd_linhas)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (hash_arquivo) DO NOTHING
-            RETURNING load_id
-            """,
-            (caminho.name, hash_arquivo, extrair_data_envio(caminho), len(df)),
+        """
+        INSERT INTO etl.controle_cargas(nome_arquivo, hash_arquivo, data_envio, qtd_linhas)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (hash_arquivo) DO NOTHING
+        RETURNING load_id
+        """,
+        (caminho.name, hash_arquivo, extrair_data_envio(caminho), len(df)),
         ).fetchone()
 
         if linha is None:
-            print(f"[PULADO] Já importado anteriormente: {caminho.name}")
+            print(f"[PULADO] arquivo já importado anteriormente: {caminho.name}")
             return False
 
-        #  ------ rever esse bloco  ------ #
         load_id = linha[0]
-        colunas_sql = ", ".join(["load_id", *df.columns])
-        with conn.cursor() as cur, cur.copy(f"COPY raw.base_tasy ({colunas_sql}) FROM STDIN") as copy:
-            for registro in df.itertuples(index=False, name=None):
-                copy.write_row((load_id, *registro))
 
-    print(f"[OK] {caminho.name} → load_id {load_id} ({len(df)} linhas)")
-    return True
+        # insere o load_id nos dados
+        df.insert(0, "load_id", load_id)
+        colunas_sql = ", ".join(df.columns)
 
+        with conn.cursor() as cur:
+            comando_copy = (f"COPY raw.base_tasy ({colunas_sql}) FROM STDIN")
 
-# Carrega tudo o que está na landing zone
-def carregar_todos() -> None:
-    arquivos = []
+            with cur.copy(comando_copy) as copy:
+                for registro in df.itertuples(index=False, name=None):
+                    copy.write_row(registro)
+
+        tempo_gravacao = time.time() - inicio
+
+        print(f"[OK] {caminho.name} -> load_id {load_id} ({len(df)} linhas)")
+        print(f"      leitura: {tempo_leitura:.1f}s | transformacao: {tempo_transformacao:.1f}s | gravacao: {tempo_gravacao:.1f}s")
+        return True
+
+def carregar_todos():
+    arquivos =[]
     for arq in LANDING_ZONE.iterdir():
-        if not arq.is_file() or arq.suffix.lower() not in {".xlsx", ".xls"} or arq.name.startswith("_tmp_"):
+        if not arq.is_file():
             continue
+        if arq.suffix.lower() not in [".xlsx", ".xls"]:
+            continue
+        
         try:
             extrair_data_envio(arq)
         except ValueError:
-            print(f"[AVISO] Nome fora do padrão '{FORMATO_DATA_ARQUIVO}_...', ignorado: {arq.name}")
+            print(f"[AVISO] Nome fora do padrão: '{FORMATO_DATA_ARQUIVO}_...', ignorado: {arq.name}")
             continue
+
         arquivos.append(arq)
 
-    if not arquivos:
+    if len(arquivos) == 0:
         print("Carga: nenhum arquivo na landing zone")
         return
 
-    # ordem cronológica de envio, para os load_id seguirem a ordem das versões
+    # ordena pela data de envio
     arquivos.sort(key=extrair_data_envio)
 
-    carregados = pulados = erros = 0
+    carregados = 0
+    pulados = 0
+    erros = 0
+
     with conectar() as conn:
         for arq in arquivos:
             try:
-                if ingest(arq, conn):
+                if ingest(arq,conn):
                     carregados += 1
                 else:
                     pulados += 1
-                arq.replace(PROCESSADOS / arq.name)   # já está no banco: sai da landing zone
+
+                # se já constar no banco move para a pasta de processados
+                arq.replace(PROCESSADOS / arq.name)
+            # deixa o arquivo que não foi carregado na landing_zone 
             except Exception as erro:
-                # fica na landing zone para nova tentativa na próxima execução
                 erros += 1
-                print(f"[ERRO] {arq.name}: {erro}")
+                print(f"[ERRO] {arq.name} : {erro}")
 
-    print(f"\nCarga: {carregados} carregado(s), {pulados} já existente(s), {erros} com erro")
-
+    print(f"\nCarga: {carregados} carregado(s), {pulados} pulado(s), {erros} com erro")
 
 if __name__ == "__main__":
     carregar_todos()
+
+
+
+
+
