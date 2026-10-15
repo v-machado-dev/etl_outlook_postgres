@@ -1,6 +1,7 @@
 # dados
 landing_zone/
 processados/
+
 *.xlsx
 *.xls
 *.csv
@@ -12,8 +13,8 @@ processados/
 .venv/
 venv/
 __pycache__/
-data/
 *.pyc
+data/
 
 # cópia dos arquivos antes das alterações
 _versao_anterior/
