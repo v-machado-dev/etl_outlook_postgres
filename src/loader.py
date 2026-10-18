@@ -21,7 +21,7 @@ def extrair_data_envio(caminho):
     texto_data = caminho.name[:TAMANHO_DATA]
     return datetime.strptime(texto_data, FORMATO_DATA_ARQUIVO)
 
-# ingestão do arquivo no bd -> False se já foi carregado antes
+# Ingestão do arquivo no BD. Retorna False se já foi carregado antes
 def ingest(caminho, conn):
     hash_arquivo = calcular_hash(caminho)
 
@@ -71,7 +71,7 @@ def ingest(caminho, conn):
         comando_copy = f"COPY raw.base_3352 ({colunas_sql}) FROM STDIN"
         registros = df.itertuples(index=False, name=None)
         
-        #transação: se uma linha falha nada na carga fica gravado 
+        # Transação: se uma linha falha nada na carga fica gravado 
         with conn.cursor() as cur, cur.copy(comando_copy) as copy:
             for registro in registros:
                 copy.write_row(registro)
@@ -82,7 +82,7 @@ def ingest(caminho, conn):
         print(f"      leitura: {tempo_leitura:.1f}s | transformacao: {tempo_transformacao:.1f}s | gravacao: {tempo_gravacao:.1f}s")
         return True
     
-# carrega os arquivos da Staging
+# Load dos arquivos na Staging -> BD -> Processados
 def carregar_todos():
     arquivos =[]
     for arq in STAGING.iterdir():      
@@ -113,18 +113,20 @@ def carregar_todos():
     pulados = 0
     erros = 0
 
-    # ingestao e metrificacao dos arquivos da Staging -> BD -> Pasta Processados 
+    # ingestao e contabilizacao   
     with conectar() as conn:
         for arq in arquivos:
+            # chama a função de ingestão
             try:
                 if ingest(arq, conn):
                     carregados += 1
                 else:
                     pulados += 1
 
-                # se já está no banco move para a pasta de processados
+                # move arquivo para pasta Processados
                 arq.replace(PROCESSADOS / arq.name)
-            # deixa o arquivo que não foi carregado na STAGING 
+
+            # printa erros e >>deixa arquivos com erro na >>STAGING<<< 
             except Exception as erro:
                 erros += 1
                 print(f"[ERRO] {arq.name} : {erro}")
