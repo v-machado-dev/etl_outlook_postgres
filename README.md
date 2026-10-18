@@ -17,7 +17,7 @@ Outlook → landing zone → transformação → PostgreSQL → pasta processado
 - Windows com Outlook clássico configurado
 - Python 3.13
 - PostgreSQL
-- Criar e configurar pasta no Outlook que receberá os arquivos que irão ser baixados(opcional, mas recomendado)
+- Criar e configurar pasta no Outlook que receberá os arquivos que irão ser baixados (opcional, mas recomendado)
 
 ## Instalação
 
