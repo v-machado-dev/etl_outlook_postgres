@@ -1,7 +1,7 @@
 # ETL Outlook → PostgreSQL
 
 Baixa os relatórios .xlsx/.xls recebidos no Outlook (pasta `Base_3352`),
-guarda o original numa landing zone e carrega no PostgreSQL, mantendo
+guarda o original numa pasta Staging e carrega no PostgreSQL, mantendo
 o histórico de cada versão diária do relatório.
 
 ```
