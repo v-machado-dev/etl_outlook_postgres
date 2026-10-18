@@ -57,8 +57,8 @@ python -m src.loader                # só carga
 ## Modelo de dados
 
 - `etl.controle_cargas` — uma linha por arquivo carregado (hash único, data de envio).
-- `raw.base_tasy` — dados de todas as cargas, ligados por `load_id`.
-- `raw.vw_base_tasy_atual` — retrato mais recente (último e-mail enviado).
+- `raw.base_3352` — dados de todas as cargas, ligados por `load_id`.
+- `raw.vw_base_3352_atual` — retrato mais recente (último e-mail enviado).
 
 ## Problemas comuns
 
