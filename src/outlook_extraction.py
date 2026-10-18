@@ -1,77 +1,124 @@
-# Extração: baixa os anexos da pasta Base_3352 do Outlook para a landing zone.
+# Extracao: baixa os anexos da pasta Base_3352 do Outlook para a Staging
+
+import os
 import re
 from pathlib import Path
+from datetime import datetime, timedelta
 
 import win32com.client
 
-from config import FORMATO_DATA_ARQUIVO, LANDING_ZONE, PROCESSADOS
+from config import FORMATO_DATA_ARQUIVO, STAGING, PROCESSADOS
 
+# nome da pasta criada no outlook para receber somente a base
 PASTA_OUTLOOK = "Base_3352"
-EXTENSOES_ACEITAS = {".xls", ".xlsx"}
-OL_MAIL_ITEM = 43      # tipo "e-mail" no Outlook
-OL_CAIXA_ENTRADA = 6
+EXTENSOES_ACEITAS = [".xls", ".xlsx"]
+
+# variaveis do Outlook
+OL_ITEM_EMAIL = 43
+OUTLOOK_INBOX = 6
+
+# # so olha os emails dos ultimos X dias;  None -> olha a pasta inteira
+DIAS_BUSCA = None
+
+# proteção para caracteres inválidos
+def nome_seguro(nome_base):
+    return re.sub(r'[<>:/\\|?*]', "-", nome_base).strip()
 
 
-# Troca caracteres inválidos em nome de arquivo
-def nome_seguro(nome: str) -> str:
-    return re.sub(r'[<>:"/\\|?*]', "_", nome).strip()
-
-
-# Formato real do arquivo, pelos primeiros bytes
-def formato_real(caminho: Path) -> str | None:
+# descobre a extensão real do arquivo pelos primeiros bytes
+def formato_real(caminho):
     with open(caminho, "rb") as f:
-        assinatura = f.read(8)
-    if assinatura.startswith(b"PK\x03\x04"):
-        return ".xlsx"
-    if assinatura.startswith(b"\xD0\xCF\x11\xE0"):
-        return ".xls"
-    return None
+        formato = f.read(8) 
+        if formato.startswith(b"PK\x03\x04"):
+            return ".xlsx"
+        if formato.startswith(b"\xD0\xCF\x11\xE0"):
+            return ".xls"
+        else:
+            return None
 
+# verifica se o arquivo ja foi baixado antes
+def arquivo_ja_baixado(nome_base, arquivos_existentes):
+    for ext in EXTENSOES_ACEITAS:
+        if  nome_base + ext in arquivos_existentes:
+            return True
+    return False 
 
-# Salva na landing zone os anexos ainda não baixados. Retorna quantos salvou.
-def extrair() -> int:
+# conecta ao outlook, baixa e salva o arquivo na pasta staging
+def extract():
+    # api Outlook
     outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
-    pasta = outlook.GetDefaultFolder(OL_CAIXA_ENTRADA).Folders(PASTA_OUTLOOK)
+    
+    # conecta a subpasta criada >>>préviamente<<<
+    pasta = outlook.GetDefaultFolder(OUTLOOK_INBOX).Folders(PASTA_OUTLOOK)
 
+    # mais recentes primeiro
     itens = pasta.Items
-    itens.Sort("[ReceivedTime]", True)  # mais recentes primeiro
+    itens.Sort("[ReceivedTime]", True)
 
+    # lista todos os arquivos existentes 
+    arquivos_existentes = set(os.listdir(STAGING)).union(set(os.listdir(PROCESSADOS)))
+
+    # variaveis para "quantos dias olhar no retrovisor"
+    data_limite = None
+    if DIAS_BUSCA is not None:
+        data_limite = datetime.now() - timedelta(days=DIAS_BUSCA)
+
+    # ignora objetos cuja classe não é o "tipo email"
     salvos = 0
-    for msg in itens:
-        if msg.Class != OL_MAIL_ITEM:   # ignora convites, relatórios de entrega etc.
-            continue
-
-        data_envio = msg.SentOn.strftime(FORMATO_DATA_ARQUIVO)
-
-        for anexo in msg.Attachments:
-            nome_original = anexo.FileName
-            if Path(nome_original).suffix.lower() not in EXTENSOES_ACEITAS:
+    for email in itens:
+        try:
+            if email.Class != OL_ITEM_EMAIL:   
                 continue
 
-            # salva com nome temporário para inspecionar o conteúdo
-            temp = LANDING_ZONE / f"_tmp_{nome_seguro(nome_original)}"
-            anexo.SaveAsFile(str(temp))
+            # analisa apenas os arquivos que estão dentro do intervalo de dias estabelecido 
+            if data_limite is not None:
+                data_recebida = email.ReceivedTime.replace(tzinfo=None)
+                if data_recebida < data_limite:
+                    break     
 
-            ext_real = formato_real(temp)
-            if ext_real is None:
-                print(f"[AVISO] Formato não reconhecido: {nome_original} | {msg.Subject}")
-                temp.unlink()
-                continue
+            # salva a data e o nome originais
+            data_envio = email.SentOn.strftime(FORMATO_DATA_ARQUIVO)
+            for anexo in email.Attachments:
+                nome_original = anexo.Filename
 
-            nome_final = f"{data_envio}_{nome_seguro(Path(nome_original).stem)}{ext_real}"
+                # pula arquivos não xls ou xlsx
+                if Path(nome_original).suffix.lower() not in EXTENSOES_ACEITAS:
+                    continue
 
-            # já baixado antes (aguardando carga ou já processado)
-            if (LANDING_ZONE / nome_final).exists() or (PROCESSADOS / nome_final).exists():
-                temp.unlink()
-                continue
+                # recorta apenas o "prefixo"(caule) do nome do anexo
+                nome_base = f"{data_envio}_{nome_seguro(Path(nome_original).stem)}"
+                
+                # confere se já existe
+                if arquivo_ja_baixado(nome_base, arquivos_existentes):
+                    continue
 
-            temp.replace(LANDING_ZONE / nome_final)
-            salvos += 1
-            print(f"[OK] {nome_final}")
+                # salva temporariamente para conferir o formato pelos primeiros bytes         
+                temp = STAGING / f"_temp_{nome_seguro(nome_original)}"
+                anexo.SaveAsFile(str(temp))
 
-    print(f"\nExtração: {salvos} arquivo(s) novo(s) na landing zone")
+                # cancela o download se a extensão for inválida
+                ext_real = formato_real(temp)
+                if ext_real is None:
+                    print(f"[AVISO] formato não recohecido: {nome_original} | {email.Subject}")
+                    temp.unlink()
+                    continue
+
+                nome_final = nome_base + ext_real
+
+                # salva arquivo validado na staging
+                temp.replace(STAGING / nome_final)
+
+                # contabiliza no conjunto(set)
+                arquivos_existentes.add(nome_final)
+                salvos += 1
+                print(f"[OK] {nome_final}")
+        
+        except Exception as erro:
+            print(f"[ERRO] Não foi possível ler o email {erro}")
+
+    print(f"\n Extração: {salvos} arquivos(s) novo(s) na Staging")
     return salvos
 
 
 if __name__ == "__main__":
-    extrair()
+    extract() 

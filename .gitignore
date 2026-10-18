@@ -15,6 +15,7 @@ venv/
 __pycache__/
 *.pyc
 data/
+temp/
 
 # cópia dos arquivos antes das alterações
 _versao_anterior/

@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS etl.controle_cargas (
 
 
 -- Tabela dos dados
-CREATE TABLE IF NOT EXISTS raw.base_tasy (
+CREATE TABLE IF NOT EXISTS raw.base_3352 (
     id                      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     load_id                 BIGINT NOT NULL REFERENCES etl.controle_cargas (load_id),
 
@@ -71,15 +71,17 @@ CREATE TABLE IF NOT EXISTS raw.base_tasy (
     nr_protocolo_documento  TEXT
 );
 
-CREATE INDEX IF NOT EXISTS ix_base_tasy_load_id ON raw.base_tasy (load_id);
+
+    -- rever esse trecho --
+CREATE INDEX IF NOT EXISTS ix_base_3352_load_id ON raw.base_3352 (load_id);
 
 
 -- Retrato mais recente: a carga do e-mail enviado por último
 -- (usa data_envio, e não max(load_id), para continuar certa mesmo se
 --  um arquivo antigo for carregado depois de um mais novo)
-CREATE OR REPLACE VIEW raw.vw_base_tasy_atual AS
+CREATE OR REPLACE VIEW raw.vw_base_3352_atual AS
 SELECT b.*
-FROM raw.base_tasy b
+FROM raw.base_3352 b
 WHERE b.load_id = (
     SELECT load_id
     FROM etl.controle_cargas
