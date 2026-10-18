@@ -26,9 +26,9 @@ def colunas_para_texto(coluna):
     texto = texto.mask(texto == "")
     return texto
 
-
+# trata a tabela a ser carregada conforme cada um de seus tipos de dado
 def preparar_df(df):
-    # verifica os se os dados mudaram e aborta caso verdadeiro
+    # verifica se há diferença entre
     colunas_esperadas = set(DE_PARA_COLUNAS.keys())
     colunas_planilha = set(df.columns)
 
@@ -36,7 +36,7 @@ def preparar_df(df):
     sobrando = colunas_planilha - colunas_esperadas
 
     if len(faltando) > 0 or len(sobrando) > 0:
-        raise ValueError(f"Estrutura mudou. Faltando: {faltando} | Novas: {sobrando}")
+        raise ValueError(f"Estrutura mudou. Faltando: {faltando} | Novas: {sobrando} ")
 
     df = df.rename(columns=DE_PARA_COLUNAS)
 
