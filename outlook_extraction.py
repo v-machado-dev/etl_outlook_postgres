@@ -74,7 +74,7 @@ def extract():
             if data_limite is not None:
                 data_recebida = email.ReceivedTime.replace(tzinfo=None)
                 if data_recebida < data_limite:
-                    break     
+                    continue     
 
             # salva a data e o nome originais
             data_envio = email.SentOn.strftime(FORMATO_DATA_ARQUIVO)
