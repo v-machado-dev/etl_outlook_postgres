@@ -1,23 +1,24 @@
 # ETL Outlook → PostgreSQL
 
-Baixa os relatórios .xlsx/.xls recebidos no Outlook (pasta `Base_3352`),
-guarda o original numa pasta Staging e carrega no PostgreSQL, mantendo
-o histórico de cada versão diária do relatório.
+Baixa os relatórios .xlsx/.xls recebidos no Outlook >>Clássico<< (pasta `Base_3352`),
+salva o original numa pasta Staging, carrega no PostgreSQL, mantendo
+o histórico de cada versão diária do relatório. Caso o arquivo seja carregado com sucesso,
+o salva na pasta Processados, se não, fica na Staging.
 
 ```
 Outlook → landing zone → transformação → PostgreSQL → pasta processados
 ```
 
 - **Idempotente:** rodar duas vezes não duplica dados (nome do arquivo + SHA-256).
-- **Falha visível:** coluna faltando/nova ou tipo inválido aborta só aquele arquivo, que fica na landing zone para nova tentativa.
+- **Falha visível:** coluna faltando/nova ou tipo inválido aborta só aquele arquivo, que fica na Staging para a próxima extração.
 - **Originais preservados:** os arquivos nunca são alterados, só movidos para `PROCESSADOS` após a carga.
 
 ## Requisitos
 
-- Windows com Outlook clássico configurado
+- Windows com Outlook Clássico configurado
 - Python 3.13
-- PostgreSQL
-- Criar e configurar pasta no Outlook que receberá os arquivos que irão ser baixados (opcional, mas recomendado)
+- PostgreSQL 
+- Criar e configurar pasta no Outlook que receberá os arquivos que irão ser baixados
 
 ## Instalação
 
@@ -43,14 +44,15 @@ python -m src.loader                # só carga
 ## Estrutura
 
 ```
-├── config/schema.json        de-para das colunas (Excel → tabela)
-├── sql/001_estrutura.sql     criação de schemas, tabelas e view
+├── config/schema.json           de-para das colunas (Excel → BD)
+├── sql/001_estrutura.sql        criação de schemas, tabelas e view
 ├── src/
-│   ├── config.py             .env, pastas, conexão
-│   ├── outlook_extraction.py Outlook → landing zone
-│   ├── normalizar.py         nomes e tipos das colunas
-│   ├── loader.py             landing zone → Postgres
-│   └── main.py               orquestrador
+│   ├── __init__.py
+│   ├── config.py                dotenv, de-para, pastas, conexão
+│   ├── outlook_extraction.py    Outlook → Staging
+│   ├── normalizar.py            trata nomes e tipos das colunas
+│   ├── loader.py                Staging → Postgres
+│   └── main.py                  orquestrador
 ├── .env.example
 └── requirements.txt
 ```
@@ -63,10 +65,6 @@ python -m src.loader                # só carga
 
 ## Problemas comuns
 
-- **Erro COM com o Outlook:** script e Outlook precisam rodar no mesmo nível de privilégio (ambos sem admin).
+- **Bases Ignoradas** Verifique quais bases constam na pasta que o programa irá checar. Tenha certeza de que ela esteja atualizada. 
 - **"Estrutura mudou":** o relatório de origem mudou. Compare com `config/schema.json` e, se preciso, ajuste o SQL.
 
-## Privacidade
-
-A base contém dados sensíveis de pacientes e colaboradores. Landing zone e banco
-devem ter acesso restrito. Nunca versionar dados reais nem o `.env`.
