@@ -62,7 +62,7 @@ def ingest(caminho, conn):
             return False
 
         # criacao e insercao da PK(load_id) no DataFrame
-        # rever esse trecho - sql injec  
+        # ------rever esse trecho - sql injec  ------ #
         load_id = linha[0]
         df.insert(0, "load_id", load_id)
         colunas_sql = ", ".join(df.columns)
