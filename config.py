@@ -11,15 +11,15 @@ load_dotenv(RAIZ_PROJETO / ".env")
 
 
 # Lê uma variável do .env e falha se ela não existir.
-def _obrigatoria(nome: str) -> str:
+def obrigatoria(nome: str) -> str:
     valor = os.getenv(nome)
     if not valor:
         raise RuntimeError(f"Variável '{nome}' não definida no .env")
     return valor
 
 # Pastas
-STAGING = RAIZ_PROJETO / _obrigatoria("LANDING_ZONE")
-PROCESSADOS = RAIZ_PROJETO / _obrigatoria("PROCESSADOS")
+STAGING = RAIZ_PROJETO / obrigatoria("STAGING")
+PROCESSADOS = RAIZ_PROJETO / obrigatoria("PROCESSADOS")
 STAGING.mkdir(parents=True, exist_ok=True)
 PROCESSADOS.mkdir(parents=True, exist_ok=True)
 
@@ -33,11 +33,11 @@ DE_PARA_COLUNAS = {c["origem"]: c["destino"] for c in SCHEMA["colunas"]}
 
 # Banco de dados
 PG = {
-    "user": _obrigatoria("PG_USER"),
-    "password": _obrigatoria("PG_PASSWORD"),
-    "host": _obrigatoria("PG_HOST"),
-    "port": int(_obrigatoria("PG_PORT")),
-    "dbname": _obrigatoria("PG_DB"),
+    "user": obrigatoria("PG_USER"),
+    "password": obrigatoria("PG_PASSWORD"),
+    "host": obrigatoria("PG_HOST"),
+    "port": int(obrigatoria("PG_PORT")),
+    "dbname": obrigatoria("PG_DB"),
 }
 
 # autocommit=True: cada `with conn.transaction()` é independente,

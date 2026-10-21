@@ -65,6 +65,7 @@ def ingest(caminho, conn):
         # ------rever esse trecho - sql injec  ------ #
         load_id = linha[0]
         df.insert(0, "load_id", load_id)
+        
         colunas_sql = ", ".join(df.columns)
     
         # comando para copiar todas as linhas de uma vez
